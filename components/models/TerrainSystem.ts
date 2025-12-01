@@ -180,29 +180,21 @@ export function updateWaterAnimation(water: THREE.Mesh, time: number): void {
 
 /**
  * Creates a sky gradient background
+ * Note: In React Native/Expo, we use a simple color instead of canvas gradient
  */
 export function createSkyGradient(scene: THREE.Scene): void {
-  // Create gradient texture
-  const canvas = document.createElement('canvas');
-  canvas.width = 2;
-  canvas.height = 256;
+  // Use a simple sky blue color for React Native compatibility
+  // Canvas/document is not available in React Native
+  scene.background = new THREE.Color(0x87CEEB); // Sky blue
 
-  const context = canvas.getContext('2d');
-  if (!context) return;
-
-  // Create gradient from horizon to sky
-  const gradient = context.createLinearGradient(0, 0, 0, 256);
-  gradient.addColorStop(0, '#87CEEB'); // Light blue at top
-  gradient.addColorStop(0.5, '#B0E2FF'); // Lighter blue in middle
-  gradient.addColorStop(1, '#E6F3FF'); // Almost white at horizon
-
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, 2, 256);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.mapping = THREE.EquirectangularReflectionMapping;
-
-  scene.background = texture;
+  // Alternatively, create a sky sphere with gradient shader
+  const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+  const skyMaterial = new THREE.MeshBasicMaterial({
+    color: 0x87CEEB,
+    side: THREE.BackSide,
+  });
+  const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+  scene.add(sky);
 }
 
 /**

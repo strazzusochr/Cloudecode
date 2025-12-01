@@ -6,7 +6,7 @@ import * as THREE from 'three';
 export function createDetailedFarmer(): THREE.Group {
   const group = new THREE.Group();
 
-  // Body (torso) - Blue shirt
+  // Body (torso) - Blue shirt - All Y positions adjusted so feet are at y=0
   const torsoGeometry = new THREE.CylinderGeometry(0.35, 0.4, 0.8, 32, 16);
   const torsoMaterial = new THREE.MeshStandardMaterial({
     color: 0x4A6FA5,
@@ -14,7 +14,7 @@ export function createDetailedFarmer(): THREE.Group {
     metalness: 0.1,
   });
   const torso = new THREE.Mesh(torsoGeometry, torsoMaterial);
-  torso.position.y = 1.2;
+  torso.position.y = 1.5; // Adjusted +0.3
   torso.castShadow = true;
   torso.receiveShadow = true;
   group.add(torso);
@@ -27,7 +27,7 @@ export function createDetailedFarmer(): THREE.Group {
     metalness: 0.0,
   });
   const overalls = new THREE.Mesh(overallsGeometry, overallsMaterial);
-  overalls.position.y = 0.6;
+  overalls.position.y = 0.9; // Adjusted +0.3
   overalls.castShadow = true;
   overalls.receiveShadow = true;
   group.add(overalls);
@@ -40,7 +40,7 @@ export function createDetailedFarmer(): THREE.Group {
     metalness: 0.0,
   });
   const head = new THREE.Mesh(headGeometry, headMaterial);
-  head.position.y = 1.85;
+  head.position.y = 2.15; // Adjusted +0.3
   head.castShadow = true;
   head.receiveShadow = true;
   group.add(head);
@@ -52,7 +52,7 @@ export function createDetailedFarmer(): THREE.Group {
     roughness: 1.0,
   });
   const mustache = new THREE.Mesh(mustacheGeometry, mustacheMaterial);
-  mustache.position.set(0, 1.75, 0.22);
+  mustache.position.set(0, 2.05, 0.22); // Adjusted +0.3
   mustache.rotation.x = Math.PI / 2;
   mustache.castShadow = true;
   group.add(mustache);
@@ -65,11 +65,11 @@ export function createDetailedFarmer(): THREE.Group {
   });
 
   const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-  leftEye.position.set(-0.08, 1.9, 0.22);
+  leftEye.position.set(-0.08, 2.2, 0.22); // Adjusted +0.3
   group.add(leftEye);
 
   const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-  rightEye.position.set(0.08, 1.9, 0.22);
+  rightEye.position.set(0.08, 2.2, 0.22); // Adjusted +0.3
   group.add(rightEye);
 
   // Eye highlights
@@ -77,17 +77,17 @@ export function createDetailedFarmer(): THREE.Group {
   const highlightMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
 
   const leftHighlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
-  leftHighlight.position.set(-0.075, 1.92, 0.24);
+  leftHighlight.position.set(-0.075, 2.22, 0.24); // Adjusted +0.3
   group.add(leftHighlight);
 
   const rightHighlight = new THREE.Mesh(highlightGeometry, highlightMaterial);
-  rightHighlight.position.set(0.085, 1.92, 0.24);
+  rightHighlight.position.set(0.085, 2.22, 0.24); // Adjusted +0.3
   group.add(rightHighlight);
 
   // Nose
   const noseGeometry = new THREE.SphereGeometry(0.05, 16, 16);
   const nose = new THREE.Mesh(noseGeometry, headMaterial);
-  nose.position.set(0, 1.8, 0.25);
+  nose.position.set(0, 2.1, 0.25); // Adjusted +0.3
   nose.castShadow = true;
   group.add(nose);
 
@@ -98,7 +98,7 @@ export function createDetailedFarmer(): THREE.Group {
     roughness: 0.8,
   });
   const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
-  mouth.position.set(0, 1.7, 0.22);
+  mouth.position.set(0, 2.0, 0.22); // Adjusted +0.3
   mouth.rotation.x = Math.PI / 2;
   mouth.rotation.z = Math.PI;
   group.add(mouth);
@@ -111,13 +111,13 @@ export function createDetailedFarmer(): THREE.Group {
     metalness: 0.0,
   });
   const hatBrim = new THREE.Mesh(hatBrimGeometry, hatMaterial);
-  hatBrim.position.y = 2.1;
+  hatBrim.position.y = 2.4; // Adjusted +0.3
   hatBrim.castShadow = true;
   group.add(hatBrim);
 
   const hatTopGeometry = new THREE.CylinderGeometry(0.25, 0.28, 0.25, 32);
   const hatTop = new THREE.Mesh(hatTopGeometry, hatMaterial);
-  hatTop.position.y = 2.25;
+  hatTop.position.y = 2.55; // Adjusted +0.3
   hatTop.castShadow = true;
   group.add(hatTop);
 
@@ -128,7 +128,7 @@ export function createDetailedFarmer(): THREE.Group {
     roughness: 0.7,
   });
   const hatBand = new THREE.Mesh(hatBandGeometry, hatBandMaterial);
-  hatBand.position.y = 2.1;
+  hatBand.position.y = 2.4; // Adjusted +0.3
   hatBand.rotation.x = Math.PI / 2;
   group.add(hatBand);
 
@@ -139,7 +139,7 @@ export function createDetailedFarmer(): THREE.Group {
     roughness: 0.5,
   });
   const neckerchief = new THREE.Mesh(neckerchiefGeometry, neckerchiefMaterial);
-  neckerchief.position.set(0, 1.55, 0.15);
+  neckerchief.position.set(0, 1.85, 0.15); // Adjusted +0.3
   neckerchief.rotation.x = Math.PI;
   neckerchief.castShadow = true;
   group.add(neckerchief);
@@ -152,14 +152,14 @@ export function createDetailedFarmer(): THREE.Group {
   });
 
   const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-  leftArm.position.set(-0.45, 1.1, 0);
+  leftArm.position.set(-0.45, 1.4, 0); // Adjusted +0.3
   leftArm.rotation.z = 0.3;
   leftArm.castShadow = true;
   leftArm.receiveShadow = true;
   group.add(leftArm);
 
   const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-  rightArm.position.set(0.45, 1.1, 0);
+  rightArm.position.set(0.45, 1.4, 0); // Adjusted +0.3
   rightArm.rotation.z = -0.3;
   rightArm.castShadow = true;
   rightArm.receiveShadow = true;
@@ -173,16 +173,16 @@ export function createDetailedFarmer(): THREE.Group {
   });
 
   const leftHand = new THREE.Mesh(handGeometry, handMaterial);
-  leftHand.position.set(-0.55, 0.75, 0);
+  leftHand.position.set(-0.55, 1.05, 0); // Adjusted +0.3
   leftHand.castShadow = true;
   group.add(leftHand);
 
   const rightHand = new THREE.Mesh(handGeometry, handMaterial);
-  rightHand.position.set(0.55, 0.75, 0);
+  rightHand.position.set(0.55, 1.05, 0); // Adjusted +0.3
   rightHand.castShadow = true;
   group.add(rightHand);
 
-  // Legs
+  // Legs - adjusted so feet are at y=0
   const legGeometry = new THREE.CylinderGeometry(0.12, 0.1, 0.6, 16);
   const legMaterial = new THREE.MeshStandardMaterial({
     color: 0x654321,
@@ -190,18 +190,18 @@ export function createDetailedFarmer(): THREE.Group {
   });
 
   const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-  leftLeg.position.set(-0.15, 0.0, 0);
+  leftLeg.position.set(-0.15, 0.3, 0); // Raised so bottom is at y=0
   leftLeg.castShadow = true;
   leftLeg.receiveShadow = true;
   group.add(leftLeg);
 
   const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-  rightLeg.position.set(0.15, 0.0, 0);
+  rightLeg.position.set(0.15, 0.3, 0); // Raised so bottom is at y=0
   rightLeg.castShadow = true;
   rightLeg.receiveShadow = true;
   group.add(rightLeg);
 
-  // Boots
+  // Boots - adjusted to be at ground level (y=0)
   const bootGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.25, 8, 8, 8);
   const bootMaterial = new THREE.MeshStandardMaterial({
     color: 0x3D2817,
@@ -209,12 +209,12 @@ export function createDetailedFarmer(): THREE.Group {
   });
 
   const leftBoot = new THREE.Mesh(bootGeometry, bootMaterial);
-  leftBoot.position.set(-0.15, -0.3, 0.05);
+  leftBoot.position.set(-0.15, 0.075, 0.05); // At ground level
   leftBoot.castShadow = true;
   group.add(leftBoot);
 
   const rightBoot = new THREE.Mesh(bootGeometry, bootMaterial);
-  rightBoot.position.set(0.15, -0.3, 0.05);
+  rightBoot.position.set(0.15, 0.075, 0.05); // At ground level
   rightBoot.castShadow = true;
   group.add(rightBoot);
 

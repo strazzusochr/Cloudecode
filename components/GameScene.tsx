@@ -309,7 +309,14 @@ export default function GameScene({ characters, boatSide, quality }: GameScenePr
     characters.forEach(char => {
       const mesh = createCharacterMesh(char.type);
       mesh.position.set(char.position.x, char.position.y, char.position.z);
-      mesh.userData = { id: char.id, type: char.type };
+
+      // Store the original Y position for animation
+      mesh.userData = {
+        id: char.id,
+        type: char.type,
+        originalY: mesh.position.y // Store the base Y position including model offset
+      };
+
       mesh.castShadow = true;
       scene.add(mesh);
       meshesRef.current.set(char.id, mesh);
@@ -322,21 +329,22 @@ export default function GameScene({ characters, boatSide, quality }: GameScenePr
     switch (type) {
       case 'farmer':
         characterGroup = createDetailedFarmer();
+        // Farmer model is already positioned correctly with feet at y=0
         break;
 
       case 'wolf':
         characterGroup = createDetailedWolf();
-        characterGroup.position.y = 0.2; // Adjust for wolf height
+        // Wolf model is already positioned correctly
         break;
 
       case 'sheep':
         characterGroup = createDetailedSheep();
-        characterGroup.position.y = 0.2; // Adjust for sheep height
+        // Sheep model is already positioned correctly
         break;
 
       case 'cabbage':
         characterGroup = createDetailedCabbage();
-        characterGroup.position.y = 0.3; // Adjust for cabbage height
+        // Cabbage model is already positioned correctly
         break;
 
       default:
@@ -371,13 +379,9 @@ export default function GameScene({ characters, boatSide, quality }: GameScenePr
 
     // Gentle bobbing animation for characters
     meshesRef.current.forEach((mesh, id) => {
-      if (id !== 'boat') {
-        const baseY = mesh.position.y;
+      if (id !== 'boat' && mesh.userData.originalY !== undefined) {
         const bobAmount = Math.sin(time * 2 + mesh.position.x) * 0.03;
-        // Only update if the position changed significantly to reduce computation
-        if (Math.abs(bobAmount) > 0.001) {
-          mesh.position.y = baseY + bobAmount;
-        }
+        mesh.position.y = mesh.userData.originalY + bobAmount;
       }
     });
 
