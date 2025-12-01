@@ -112,8 +112,8 @@ export default function GameScene({ characters, boatSide, quality }: GameScenePr
   };
 
   const setupLighting = (scene: THREE.Scene, quality: GraphicsQuality) => {
-    // Warm ambient light
-    const ambientLight = new THREE.AmbientLight(0xFFE5B4, 0.5);
+    // Warm ambient light (reduced for better AO visibility)
+    const ambientLight = new THREE.AmbientLight(0xFFE5B4, 0.4);
     scene.add(ambientLight);
 
     // Main directional light (sun) with warm tone
@@ -136,19 +136,27 @@ export default function GameScene({ characters, boatSide, quality }: GameScenePr
 
     scene.add(sunLight);
 
-    // Hemisphere light for natural sky/ground lighting
-    const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x4F7F4F, 0.6);
+    // Hemisphere light for natural sky/ground lighting (provides ambient occlusion effect)
+    const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x3D5016, 0.7);
+    hemiLight.position.set(0, 50, 0);
     scene.add(hemiLight);
 
     // Fill light for softer shadows
-    const fillLight = new THREE.DirectionalLight(0xB0E2FF, 0.3);
+    const fillLight = new THREE.DirectionalLight(0xB0E2FF, 0.25);
     fillLight.position.set(-10, 10, -5);
     scene.add(fillLight);
 
     // Rim light for depth
-    const rimLight = new THREE.DirectionalLight(0xFFFFE0, 0.2);
+    const rimLight = new THREE.DirectionalLight(0xFFFFE0, 0.15);
     rimLight.position.set(0, 5, -15);
     scene.add(rimLight);
+
+    // Additional AO-like lighting from below (subtle)
+    if (quality !== 'low') {
+      const aoLight = new THREE.DirectionalLight(0x4F7F4F, 0.15);
+      aoLight.position.set(0, -5, 0);
+      scene.add(aoLight);
+    }
   };
 
   const createEnvironment = (scene: THREE.Scene, quality: GraphicsQuality) => {
