@@ -477,9 +477,10 @@ export default function GameScene({ characters, boatSide, quality, onCharacterPr
       // Add or remove selection glow effect
       if (char.selected) {
         // Add a glowing outline effect
-        if (!mesh.userData.outlineMesh) {
+        if (!mesh.userData.outlineMeshes) {
+          mesh.userData.outlineMeshes = [];
           mesh.traverse((child) => {
-            if (child instanceof THREE.Mesh && child.geometry) {
+            if (child instanceof THREE.Mesh && child.geometry && child !== mesh) {
               // Create a slightly larger version for outline
               const outlineMaterial = new THREE.MeshBasicMaterial({
                 color: 0xFFFF00,
@@ -488,18 +489,22 @@ export default function GameScene({ characters, boatSide, quality, onCharacterPr
                 opacity: 0.5,
               });
               const outlineMesh = new THREE.Mesh(child.geometry, outlineMaterial);
-              outlineMesh.scale.multiplyScalar(1.1);
-              mesh.userData.outlineMesh = outlineMesh;
-              mesh.add(outlineMesh);
+              outlineMesh.scale.setScalar(1.15);
+              outlineMesh.position.copy(child.position);
+              outlineMesh.rotation.copy(child.rotation);
+              child.add(outlineMesh);
+              mesh.userData.outlineMeshes.push({ parent: child, outline: outlineMesh });
             }
           });
         }
       } else {
-        // Remove outline if exists
-        if (mesh.userData.outlineMesh) {
-          mesh.remove(mesh.userData.outlineMesh);
-          mesh.userData.outlineMesh.material.dispose();
-          mesh.userData.outlineMesh = null;
+        // Remove outlines if exist
+        if (mesh.userData.outlineMeshes) {
+          mesh.userData.outlineMeshes.forEach((outlineData: any) => {
+            outlineData.parent.remove(outlineData.outline);
+            outlineData.outline.material.dispose();
+          });
+          mesh.userData.outlineMeshes = null;
         }
       }
     });
@@ -542,6 +547,9 @@ export default function GameScene({ characters, boatSide, quality, onCharacterPr
       if (targetObject.userData.id) {
         onCharacterPress(targetObject.userData.id);
       }
+    } else {
+      // Tapped empty space - deselect by passing empty string
+      onCharacterPress('');
     }
   }, [onCharacterPress]);
 

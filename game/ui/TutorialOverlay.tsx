@@ -29,7 +29,7 @@ const tutorialSteps = [
   {
     id: 3,
     text: 'Wie es funktioniert',
-    subText: 'Tippe auf einen Charakter, um ihn auszuwählen. Dann tippe auf das Boot, um ihn einzuladen.',
+    subText: 'Tippe auf einen Charakter in der 3D-Szene, um ihn auszuwählen (er leuchtet gelb). Dann nutze die Buttons "EINSTEIGEN" und "AUSSTEIGEN".',
   },
   {
     id: 4,

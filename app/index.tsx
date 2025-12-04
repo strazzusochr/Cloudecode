@@ -30,6 +30,7 @@ export default function GameScreen() {
   ]);
 
   const [boatSide, setBoatSide] = useState<Side>('left');
+  const [isAnimating, setIsAnimating] = useState(false);
 
   // Timer for game stats
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function GameScreen() {
     setCharacters(prev =>
       prev.map(char => ({
         ...char,
-        selected: char.id === characterId,
+        selected: characterId ? char.id === characterId : false,
       }))
     );
   };
@@ -61,8 +62,28 @@ export default function GameScreen() {
     return { x: boatX, z: boatZ };
   };
 
+  // Calculate shore position for character
+  const getShorePosition = (side: Side) => {
+    const shoreX = side === 'left' ? -10 : 10;
+    const charactersOnShore = characters.filter(c => c.side === side && !c.inBoat);
+    const count = charactersOnShore.length;
+
+    // Distribute characters in a 2x2 grid pattern
+    const positions = [
+      { z: 2 },   // Front left
+      { z: 0 },   // Front right
+      { z: -2 },  // Back left
+      { z: -4 },  // Back right
+    ];
+
+    const position = positions[count % 4];
+    return { x: shoreX, y: 0, z: position.z };
+  };
+
   // Load character into boat
   const handleLoadIntoBoat = () => {
+    if (isAnimating) return;
+
     const selectedChar = characters.find(c => c.selected);
     if (!selectedChar) return;
 
@@ -75,6 +96,7 @@ export default function GameScreen() {
     const farmerInBoat = characters.find(c => c.type === 'farmer' && c.inBoat);
     if (!farmerInBoat && character.type !== 'farmer') return;
 
+    setIsAnimating(true);
     const boatPos = getBoatPosition();
     const inBoatChars = characters.filter(c => c.inBoat);
     const offset = inBoatChars.length === 0 ? -1 : 1;
@@ -91,16 +113,20 @@ export default function GameScreen() {
           : char
       )
     );
+
+    // Release animation lock after animation completes
+    setTimeout(() => setIsAnimating(false), 600);
   };
 
   // Unload character from boat
   const handleUnloadFromBoat = () => {
+    if (isAnimating) return;
+
     const selectedChar = characters.find(c => c.selected);
     if (!selectedChar || !selectedChar.inBoat) return;
 
-    const shoreX = boatSide === 'left' ? -10 : 10;
-    const inBoatChars = characters.filter(c => c.inBoat && c.id !== selectedChar.id);
-    const shoreOffset = (inBoatChars.length % 2) * 2 - 2;
+    setIsAnimating(true);
+    const shorePos = getShorePosition(boatSide);
 
     setCharacters(prev =>
       prev.map(char =>
@@ -109,17 +135,24 @@ export default function GameScreen() {
               ...char,
               inBoat: false,
               selected: false,
-              position: { x: shoreX, y: 0, z: shoreOffset },
+              position: shorePos,
             }
           : char
       )
     );
+
+    // Release animation lock after animation completes
+    setTimeout(() => setIsAnimating(false), 600);
   };
 
   // Cross river handler
   const handleCrossRiver = () => {
+    if (isAnimating) return;
+
     const farmerInBoat = characters.find(c => c.type === 'farmer' && c.inBoat);
     if (!farmerInBoat) return; // Farmer must steer
+
+    setIsAnimating(true);
 
     // Move boat and characters
     const newSide: Side = boatSide === 'left' ? 'right' : 'left';
@@ -153,7 +186,8 @@ export default function GameScreen() {
     // Check for conflicts after move (wait for animation)
     setTimeout(() => {
       checkGameRules();
-    }, 800);
+      setIsAnimating(false);
+    }, 1200);
   };
 
   // Check win/lose conditions
@@ -258,6 +292,7 @@ export default function GameScreen() {
           boatSide={boatSide}
           onLoadCharacter={handleLoadIntoBoat}
           onUnloadCharacter={handleUnloadFromBoat}
+          isAnimating={isAnimating}
         />
       )}
 

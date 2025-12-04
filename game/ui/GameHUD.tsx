@@ -18,6 +18,7 @@ interface GameHUDProps {
   boatSide: 'left' | 'right';
   onLoadCharacter?: () => void;
   onUnloadCharacter?: () => void;
+  isAnimating?: boolean;
 }
 
 export default function GameHUD({
@@ -30,6 +31,7 @@ export default function GameHUD({
   boatSide,
   onLoadCharacter,
   onUnloadCharacter,
+  isAnimating = false,
 }: GameHUDProps) {
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -73,6 +75,14 @@ export default function GameHUD({
         <View style={styles.centerBox}>
           <Text style={styles.levelTitle}>Level 1 - Tutorial</Text>
           <Text style={styles.stars}>{getStarDisplay()}</Text>
+          {/* Boat Capacity Indicator */}
+          {inBoatCount > 0 && (
+            <View style={styles.boatCapacity}>
+              <Text style={styles.boatCapacityText}>
+                🚣 {inBoatCount}/2
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Time Counter */}
@@ -92,7 +102,7 @@ export default function GameHUD({
         {/* Character Control Buttons */}
         <View style={styles.centerControls}>
           {/* Load Button */}
-          {canLoad && onLoadCharacter && (
+          {canLoad && onLoadCharacter && !isAnimating && (
             <TouchableOpacity
               style={[styles.actionButton, styles.loadButton]}
               onPress={onLoadCharacter}
@@ -102,7 +112,7 @@ export default function GameHUD({
           )}
 
           {/* Unload Button */}
-          {canUnload && onUnloadCharacter && (
+          {canUnload && onUnloadCharacter && !isAnimating && (
             <TouchableOpacity
               style={[styles.actionButton, styles.unloadButton]}
               onPress={onUnloadCharacter}
@@ -115,13 +125,13 @@ export default function GameHUD({
           <TouchableOpacity
             style={[
               styles.mainButton,
-              canCross ? styles.mainButtonActive : styles.mainButtonInactive,
+              canCross && !isAnimating ? styles.mainButtonActive : styles.mainButtonInactive,
             ]}
             onPress={onCrossRiver}
-            disabled={!canCross}
+            disabled={!canCross || isAnimating}
           >
             <Text style={styles.mainButtonText}>
-              {canCross ? 'ÜBERSETZEN 🚣' : 'Warte...'}
+              {isAnimating ? '🚣 ...' : canCross ? 'ÜBERSETZEN 🚣' : 'Warte...'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -184,6 +194,18 @@ const styles = StyleSheet.create({
   stars: {
     fontSize: 20,
     marginTop: 4,
+  },
+  boatCapacity: {
+    backgroundColor: 'rgba(33, 150, 243, 0.9)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginTop: 8,
+  },
+  boatCapacityText: {
+    fontSize: 14,
+    color: '#FFF',
+    fontWeight: 'bold',
   },
   bottomBar: {
     position: 'absolute',
