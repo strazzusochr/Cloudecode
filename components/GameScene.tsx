@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { StyleSheet } from 'react-native';
+import React, { useRef, useCallback } from 'react';
+import { StyleSheet, GestureResponderEvent } from 'react-native';
 import { GLView } from 'expo-gl';
 import { Renderer } from 'expo-three';
 import * as THREE from 'three';
@@ -32,22 +32,30 @@ interface GameSceneProps {
   characters: Character[];
   boatSide: 'left' | 'right';
   quality: GraphicsQuality;
-  onCharacterPress?: (characterId: string) => void; // Optional for now
+  onCharacterPress?: (characterId: string) => void;
 }
 
-export default function GameScene({ characters, boatSide, quality }: GameSceneProps) {
+export default function GameScene({ characters, boatSide, quality, onCharacterPress }: GameSceneProps) {
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<Renderer | null>(null);
   const meshesRef = useRef<Map<string, THREE.Group | THREE.Mesh>>(new Map());
   const butterfliesRef = useRef<THREE.Group[]>([]);
   const waterRef = useRef<THREE.Mesh | null>(null);
+  const raycasterRef = useRef<THREE.Raycaster | null>(null);
+  const viewportSizeRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
 
   const onContextCreate = async (gl: any) => {
     // Initialize renderer with enhanced settings
     const renderer = new Renderer({ gl });
     renderer.setSize(gl.drawingBufferWidth, gl.drawingBufferHeight);
     renderer.setClearColor('#87CEEB'); // Sky blue (will be overridden by gradient)
+
+    // Store viewport size for raycasting
+    viewportSizeRef.current = {
+      width: gl.drawingBufferWidth,
+      height: gl.drawingBufferHeight,
+    };
 
     // Enable shadows
     if (quality !== 'low') {
@@ -60,6 +68,9 @@ export default function GameScene({ characters, boatSide, quality }: GameScenePr
     renderer.toneMappingExposure = 1.2;
 
     rendererRef.current = renderer;
+
+    // Initialize raycaster
+    raycasterRef.current = new THREE.Raycaster();
 
     // Create scene
     const scene = new THREE.Scene();
@@ -318,11 +329,14 @@ export default function GameScene({ characters, boatSide, quality }: GameScenePr
       const mesh = createCharacterMesh(char.type);
       mesh.position.set(char.position.x, char.position.y, char.position.z);
 
-      // Store the original Y position for animation
+      // Store the original Y position and target position for animation
       mesh.userData = {
         id: char.id,
         type: char.type,
-        originalY: mesh.position.y // Store the base Y position including model offset
+        originalY: mesh.position.y, // Store the base Y position including model offset
+        targetX: char.position.x,
+        targetY: char.position.y,
+        targetZ: char.position.z,
       };
 
       mesh.castShadow = true;
@@ -369,8 +383,13 @@ export default function GameScene({ characters, boatSide, quality }: GameScenePr
 
   const createBoat = (scene: THREE.Scene, side: 'left' | 'right') => {
     const boat = createDetailedBoat();
-    boat.position.set(side === 'left' ? -4 : 4, 0.15, 0);
-    boat.userData = { id: 'boat' };
+    const boatX = side === 'left' ? -4 : 4;
+    boat.position.set(boatX, 0.15, 0);
+    boat.userData = {
+      id: 'boat',
+      targetX: boatX,
+      originalY: 0.15,
+    };
     boat.castShadow = true;
     boat.receiveShadow = true;
     scene.add(boat);
@@ -379,17 +398,44 @@ export default function GameScene({ characters, boatSide, quality }: GameScenePr
 
   const updateAnimations = () => {
     const time = Date.now() * 0.001;
+    const deltaTime = 0.016; // Approximate frame time (60fps)
 
     // Update water animation
     if (waterRef.current) {
       updateWaterAnimation(waterRef.current, time);
     }
 
-    // Gentle bobbing animation for characters
+    // Smooth position animation and bobbing for characters and boat
     meshesRef.current.forEach((mesh, id) => {
-      if (id !== 'boat' && mesh.userData.originalY !== undefined) {
-        const bobAmount = Math.sin(time * 2 + mesh.position.x) * 0.03;
-        mesh.position.y = mesh.userData.originalY + bobAmount;
+      if (mesh.userData.originalY !== undefined) {
+        const lerpSpeed = id === 'boat' ? 3.0 * deltaTime : 5.0 * deltaTime;
+
+        // Smooth position interpolation
+        if (mesh.userData.targetX !== undefined) {
+          mesh.position.x += (mesh.userData.targetX - mesh.position.x) * lerpSpeed;
+        }
+        if (mesh.userData.targetZ !== undefined) {
+          mesh.position.z += (mesh.userData.targetZ - mesh.position.z) * lerpSpeed;
+        }
+        if (mesh.userData.targetY !== undefined) {
+          const targetY = mesh.userData.targetY;
+          const currentBaseY = mesh.position.y - (mesh.userData.lastBobAmount || 0);
+          const newBaseY = currentBaseY + (targetY - currentBaseY) * lerpSpeed;
+
+          // Update originalY for bobbing
+          mesh.userData.originalY = newBaseY;
+        }
+
+        // Gentle bobbing animation (only for non-boat objects)
+        if (id !== 'boat') {
+          const bobAmount = Math.sin(time * 2 + mesh.position.x) * 0.03;
+          mesh.position.y = mesh.userData.originalY + bobAmount;
+          mesh.userData.lastBobAmount = bobAmount;
+        } else {
+          // Boat gentle wave motion
+          const waveAmount = Math.sin(time * 1.5) * 0.02;
+          mesh.position.y = mesh.userData.originalY + waveAmount;
+        }
       }
     });
 
@@ -422,7 +468,116 @@ export default function GameScene({ characters, boatSide, quality }: GameScenePr
     });
   };
 
-  return <GLView style={styles.glView} onContextCreate={onContextCreate} />;
+  // Update character visual feedback based on selection state
+  const updateCharacterVisuals = useCallback(() => {
+    characters.forEach((char) => {
+      const mesh = meshesRef.current.get(char.id);
+      if (!mesh) return;
+
+      // Add or remove selection glow effect
+      if (char.selected) {
+        // Add a glowing outline effect
+        if (!mesh.userData.outlineMesh) {
+          mesh.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.geometry) {
+              // Create a slightly larger version for outline
+              const outlineMaterial = new THREE.MeshBasicMaterial({
+                color: 0xFFFF00,
+                side: THREE.BackSide,
+                transparent: true,
+                opacity: 0.5,
+              });
+              const outlineMesh = new THREE.Mesh(child.geometry, outlineMaterial);
+              outlineMesh.scale.multiplyScalar(1.1);
+              mesh.userData.outlineMesh = outlineMesh;
+              mesh.add(outlineMesh);
+            }
+          });
+        }
+      } else {
+        // Remove outline if exists
+        if (mesh.userData.outlineMesh) {
+          mesh.remove(mesh.userData.outlineMesh);
+          mesh.userData.outlineMesh.material.dispose();
+          mesh.userData.outlineMesh = null;
+        }
+      }
+    });
+  }, [characters]);
+
+  // Handle touch events for character selection
+  const handleTouch = useCallback((event: GestureResponderEvent) => {
+    if (!raycasterRef.current || !cameraRef.current || !onCharacterPress) return;
+
+    const { locationX, locationY } = event.nativeEvent;
+    const { width, height } = viewportSizeRef.current;
+
+    // Convert touch coordinates to normalized device coordinates (-1 to +1)
+    const mouse = new THREE.Vector2(
+      (locationX / width) * 2 - 1,
+      -(locationY / height) * 2 + 1
+    );
+
+    // Update raycaster
+    raycasterRef.current.setFromCamera(mouse, cameraRef.current);
+
+    // Get all character meshes for intersection testing
+    const characterMeshes: THREE.Object3D[] = [];
+    meshesRef.current.forEach((mesh, id) => {
+      if (id !== 'boat') {
+        characterMeshes.push(mesh);
+      }
+    });
+
+    // Check for intersections
+    const intersects = raycasterRef.current.intersectObjects(characterMeshes, true);
+
+    if (intersects.length > 0) {
+      // Find the character ID from the intersected object
+      let targetObject = intersects[0].object;
+      while (targetObject.parent && !targetObject.userData.id) {
+        targetObject = targetObject.parent;
+      }
+
+      if (targetObject.userData.id) {
+        onCharacterPress(targetObject.userData.id);
+      }
+    }
+  }, [onCharacterPress]);
+
+  // Update boat target position when boatSide changes
+  React.useEffect(() => {
+    const boat = meshesRef.current.get('boat');
+    if (boat) {
+      const targetX = boatSide === 'left' ? -4 : 4;
+      boat.userData.targetX = targetX;
+    }
+  }, [boatSide]);
+
+  // Update character target positions when characters prop changes
+  React.useEffect(() => {
+    characters.forEach((char) => {
+      const mesh = meshesRef.current.get(char.id);
+      if (mesh) {
+        mesh.userData.targetX = char.position.x;
+        mesh.userData.targetY = char.position.y;
+        mesh.userData.targetZ = char.position.z;
+      }
+    });
+  }, [characters]);
+
+  // Update visuals when characters change
+  React.useEffect(() => {
+    updateCharacterVisuals();
+  }, [characters, updateCharacterVisuals]);
+
+  return (
+    <GLView
+      style={styles.glView}
+      onContextCreate={onContextCreate}
+      onTouchEnd={handleTouch}
+    />
+  );
 }
 
 const styles = StyleSheet.create({

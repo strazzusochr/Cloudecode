@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import { OPTIMAL_MOVES } from '../../types/game';
+import { OPTIMAL_MOVES, Character } from '../../types/game';
 
 interface GameHUDProps {
   moves: number;
@@ -14,6 +14,10 @@ interface GameHUDProps {
   onPause: () => void;
   onCrossRiver: () => void;
   canCross: boolean;
+  characters: Character[];
+  boatSide: 'left' | 'right';
+  onLoadCharacter?: () => void;
+  onUnloadCharacter?: () => void;
 }
 
 export default function GameHUD({
@@ -22,6 +26,10 @@ export default function GameHUD({
   onPause,
   onCrossRiver,
   canCross,
+  characters,
+  boatSide,
+  onLoadCharacter,
+  onUnloadCharacter,
 }: GameHUDProps) {
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -34,6 +42,22 @@ export default function GameHUD({
     if (moves <= 9 && timeElapsed <= 180) return '⭐⭐';
     return '⭐';
   };
+
+  // Get selected character
+  const selectedChar = characters.find((c) => c.selected);
+  const inBoatCount = characters.filter((c) => c.inBoat).length;
+  const farmerInBoat = characters.some((c) => c.type === 'farmer' && c.inBoat);
+
+  // Determine if we can load the selected character
+  const canLoad =
+    selectedChar &&
+    !selectedChar.inBoat &&
+    selectedChar.side === boatSide &&
+    inBoatCount < 2 &&
+    (selectedChar.type === 'farmer' || farmerInBoat);
+
+  // Determine if we can unload the selected character
+  const canUnload = selectedChar && selectedChar.inBoat;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -65,19 +89,42 @@ export default function GameHUD({
           <Text style={styles.iconText}>⏸</Text>
         </TouchableOpacity>
 
-        {/* Cross River Button */}
-        <TouchableOpacity
-          style={[
-            styles.mainButton,
-            canCross ? styles.mainButtonActive : styles.mainButtonInactive,
-          ]}
-          onPress={onCrossRiver}
-          disabled={!canCross}
-        >
-          <Text style={styles.mainButtonText}>
-            {canCross ? 'ÜBERSETZEN 🚣' : 'Warte...'}
-          </Text>
-        </TouchableOpacity>
+        {/* Character Control Buttons */}
+        <View style={styles.centerControls}>
+          {/* Load Button */}
+          {canLoad && onLoadCharacter && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.loadButton]}
+              onPress={onLoadCharacter}
+            >
+              <Text style={styles.actionButtonText}>↓ EINSTEIGEN</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Unload Button */}
+          {canUnload && onUnloadCharacter && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.unloadButton]}
+              onPress={onUnloadCharacter}
+            >
+              <Text style={styles.actionButtonText}>↑ AUSSTEIGEN</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Cross River Button */}
+          <TouchableOpacity
+            style={[
+              styles.mainButton,
+              canCross ? styles.mainButtonActive : styles.mainButtonInactive,
+            ]}
+            onPress={onCrossRiver}
+            disabled={!canCross}
+          >
+            <Text style={styles.mainButtonText}>
+              {canCross ? 'ÜBERSETZEN 🚣' : 'Warte...'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Settings Button */}
         <TouchableOpacity style={styles.iconButton}>
@@ -150,6 +197,14 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     paddingTop: 16,
   },
+  centerControls: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+  },
   iconButton: {
     width: 56,
     height: 56,
@@ -165,6 +220,29 @@ const styles = StyleSheet.create({
   },
   iconText: {
     fontSize: 24,
+  },
+  actionButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    minWidth: 160,
+  },
+  loadButton: {
+    backgroundColor: '#2196F3',
+  },
+  unloadButton: {
+    backgroundColor: '#FF9800',
+  },
+  actionButtonText: {
+    fontSize: 14,
+    color: '#FFF',
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   mainButton: {
     paddingHorizontal: 32,
