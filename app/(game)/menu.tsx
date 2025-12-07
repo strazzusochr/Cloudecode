@@ -1,10 +1,29 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated } from 'react-native';
 import { router } from 'expo-router';
+import { useSoundStore } from '../../src/stores/soundStore';
+import AudioSettings from '../../components/ui/AudioSettings';
 
 const { width } = Dimensions.get('window');
 
 export default function MenuScreen() {
+  const { playMusic, playSound, preloadAllSounds, isLoaded } = useSoundStore();
+
+  // Initialize audio on mount
+  useEffect(() => {
+    if (!isLoaded) {
+      preloadAllSounds().then(() => {
+        playMusic('menu', true);
+      });
+    } else {
+      playMusic('menu', true);
+    }
+  }, []);
+
+  const handleMenuPress = (route: string) => {
+    playSound('click');
+    router.push(route as any);
+  };
   const menuItems = [
     { label: 'PLAY', route: '/(game)/level-select/FUN' as const, color: '#4CAF50' },
     { label: 'EDITOR', route: '/(game)/editor' as const, color: '#2196F3' },
@@ -29,7 +48,7 @@ export default function MenuScreen() {
           <TouchableOpacity
             key={index}
             style={[styles.menuButton, { borderColor: item.color }]}
-            onPress={() => router.push(item.route)}
+            onPress={() => handleMenuPress(item.route)}
             activeOpacity={0.7}
           >
             <Text style={[styles.menuButtonText, { color: item.color }]}>
@@ -37,6 +56,11 @@ export default function MenuScreen() {
             </Text>
           </TouchableOpacity>
         ))}
+      </View>
+
+      {/* Audio Controls */}
+      <View style={styles.audioControls}>
+        <AudioSettings compact />
       </View>
 
       {/* Footer */}
@@ -106,5 +130,10 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 12,
     color: '#666',
+  },
+  audioControls: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
   },
 });

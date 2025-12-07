@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import { useSoundStore, getMusicTrackForCategory } from '../../../src/stores/soundStore';
+import { useGameStore } from '../../../src/stores/gameStore';
 
 const { width } = Dimensions.get('window');
 const BUTTON_SIZE = Math.min(80, (width - 80) / 6);
@@ -16,20 +18,38 @@ const CATEGORY_COLORS: Record<Category, string> = {
 
 const LEVELS_PER_CATEGORY = 30;
 
+// Mock progress data - in a real app this would come from persistent storage
+const getCompletedLevels = (): Record<string, { stars: number; bestTime: number }> => {
+  // Return empty for now - would be loaded from AsyncStorage
+  return {};
+};
+
 export default function LevelSelectScreen() {
   const { category } = useLocalSearchParams<{ category: Category }>();
   const validCategory = (category?.toUpperCase() as Category) || 'FUN';
   const color = CATEGORY_COLORS[validCategory] || CATEGORY_COLORS.FUN;
+  const { playSound, playMusic } = useSoundStore();
 
   const categories: Category[] = ['FUN', 'TRICKY', 'TAXING', 'MAYHEM'];
 
+  // Get completed levels
+  const completedLevels = useMemo(() => getCompletedLevels(), []);
+
   const handleLevelSelect = (levelNum: number) => {
+    playSound('click');
     const levelId = `${validCategory.toLowerCase()}-${levelNum}`;
     router.push(`/(game)/play/${levelId}`);
   };
 
   const handleCategoryChange = (newCategory: Category) => {
+    playSound('click');
     router.replace(`/(game)/level-select/${newCategory}`);
+  };
+
+  const getLevelStatus = (levelNum: number): { completed: boolean; stars: number } => {
+    const levelId = `${validCategory.toLowerCase()}-${levelNum}`;
+    const data = completedLevels[levelId];
+    return data ? { completed: true, stars: data.stars } : { completed: false, stars: 0 };
   };
 
   return (
@@ -70,16 +90,38 @@ export default function LevelSelectScreen() {
       {/* Level Grid */}
       <ScrollView contentContainerStyle={styles.gridContainer}>
         <View style={styles.grid}>
-          {Array.from({ length: LEVELS_PER_CATEGORY }, (_, i) => i + 1).map((levelNum) => (
-            <TouchableOpacity
-              key={levelNum}
-              style={[styles.levelButton, { borderColor: color }]}
-              onPress={() => handleLevelSelect(levelNum)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.levelNumber, { color }]}>{levelNum}</Text>
-            </TouchableOpacity>
-          ))}
+          {Array.from({ length: LEVELS_PER_CATEGORY }, (_, i) => i + 1).map((levelNum) => {
+            const status = getLevelStatus(levelNum);
+            return (
+              <TouchableOpacity
+                key={levelNum}
+                style={[
+                  styles.levelButton,
+                  { borderColor: color },
+                  status.completed && styles.levelCompleted,
+                ]}
+                onPress={() => handleLevelSelect(levelNum)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.levelNumber, { color }]}>{levelNum}</Text>
+                {status.completed && (
+                  <View style={styles.starsContainer}>
+                    {[1, 2, 3].map((star) => (
+                      <Text
+                        key={star}
+                        style={[
+                          styles.star,
+                          star <= status.stars ? styles.starFilled : styles.starEmpty,
+                        ]}
+                      >
+                        ★
+                      </Text>
+                    ))}
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -168,6 +210,24 @@ const styles = StyleSheet.create({
   levelNumber: {
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  levelCompleted: {
+    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    position: 'absolute',
+    bottom: 4,
+    gap: 2,
+  },
+  star: {
+    fontSize: 10,
+  },
+  starFilled: {
+    color: '#FFD700',
+  },
+  starEmpty: {
+    color: '#444',
   },
   footer: {
     padding: 20,
