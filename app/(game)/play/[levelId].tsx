@@ -2,7 +2,7 @@ import React, { useEffect, useCallback, useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useGameStore } from '../../../src/stores/gameStore';
-import { useSoundStore } from '../../../src/stores/soundStore';
+import { useSoundStore, getMusicTrackForCategory } from '../../../src/stores/soundStore';
 import { getLevelById } from '../../../src/levels/levelData';
 import GameCanvas from '../../../components/GameCanvas';
 import SkillPanel from '../../../components/SkillPanel';
@@ -37,15 +37,26 @@ export default function PlayScreen() {
     togglePause,
   } = useGameStore();
 
-  const { playSound, preloadAllSounds } = useSoundStore();
+  const { playSound, preloadAllSounds, playMusic, stopMusic } = useSoundStore();
 
   // Initialize level
   useEffect(() => {
     const level = getLevelById(levelId || '');
     if (level) {
       initLevel(level);
-      preloadAllSounds().then(() => setIsReady(true));
+      preloadAllSounds().then(() => {
+        // Play music based on level category
+        const category = level.category?.toLowerCase() || 'fun';
+        const musicTrack = getMusicTrackForCategory(category);
+        playMusic(musicTrack, true);
+        setIsReady(true);
+      });
     }
+
+    // Stop music when leaving the screen
+    return () => {
+      stopMusic();
+    };
   }, [levelId]);
 
   // Game loop timer
@@ -56,9 +67,11 @@ export default function PlayScreen() {
       updateGameTime(1 / 60);
 
       if (checkWinCondition()) {
-        playSound('yippee');
+        playSound('level_complete');
+        playMusic('victory', false);
       } else if (checkLoseCondition()) {
-        playSound('oh_no');
+        playSound('level_fail');
+        playMusic('defeat', false);
       }
     }, 1000 / 60);
 
