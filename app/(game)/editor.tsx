@@ -9,9 +9,12 @@ import {
   Alert,
   Dimensions,
   Platform,
+  Modal,
 } from 'react-native';
 import { router } from 'expo-router';
 import { TerrainType } from '../../src/terrain/terrainUtils';
+import { SkillType } from '../../src/types/game';
+import { THEME_IDS, getThemeConfig } from '../../src/themes';
 
 const { width, height } = Dimensions.get('window');
 const GRID_WIDTH = 160;
@@ -40,12 +43,42 @@ const BRUSH_TERRAIN: Record<BrushType, TerrainType> = {
   EXIT: TerrainType.EXIT,
 };
 
+const SKILL_NAMES: SkillType[] = ['CLIMBER', 'FLOATER', 'BOMBER', 'BLOCKER', 'BUILDER', 'BASHER', 'MINER', 'DIGGER'];
+
+interface LevelSettings {
+  totalLemmings: number;
+  requiredSaved: number;
+  releaseRate: number;
+  timeLimit: number;
+  themeId: string;
+  skills: Record<string, number>;
+}
+
 export default function EditorScreen() {
   const [terrain, setTerrain] = useState<Uint8Array>(() => new Uint8Array(GRID_WIDTH * GRID_HEIGHT));
   const [selectedBrush, setSelectedBrush] = useState<BrushType>('SOLID');
   const [brushSize, setBrushSize] = useState(1);
   const [levelName, setLevelName] = useState('My Level');
   const [isDrawing, setIsDrawing] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  const [settings, setSettings] = useState<LevelSettings>({
+    totalLemmings: 50,
+    requiredSaved: 25,
+    releaseRate: 50,
+    timeLimit: 300,
+    themeId: 'dirt',
+    skills: {
+      CLIMBER: 10,
+      FLOATER: 10,
+      BOMBER: 10,
+      BLOCKER: 10,
+      BUILDER: 10,
+      BASHER: 10,
+      MINER: 10,
+      DIGGER: 10,
+    },
+  });
 
   const spawnRef = useRef<{ x: number; y: number } | null>(null);
   const exitRef = useRef<{ x: number; y: number } | null>(null);
@@ -93,6 +126,20 @@ export default function EditorScreen() {
     exitRef.current = null;
   }, []);
 
+  const updateSetting = useCallback(<K extends keyof LevelSettings>(
+    key: K,
+    value: LevelSettings[K]
+  ) => {
+    setSettings((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  const updateSkill = useCallback((skill: string, value: number) => {
+    setSettings((prev) => ({
+      ...prev,
+      skills: { ...prev.skills, [skill]: Math.max(0, Math.min(99, value)) },
+    }));
+  }, []);
+
   const handleExport = useCallback(() => {
     if (!spawnRef.current || !exitRef.current) {
       Alert.alert('Error', 'Please place both SPAWN and EXIT points');
@@ -103,25 +150,25 @@ export default function EditorScreen() {
       id: `custom-${Date.now()}`,
       name: levelName,
       category: 'CUSTOM',
-      themeId: 'dirt',
+      themeId: settings.themeId,
       width: GRID_WIDTH,
       height: GRID_HEIGHT,
       terrain: Array.from(terrain),
       spawnPosition: spawnRef.current,
       exitPosition: exitRef.current,
-      totalLemmings: 50,
-      requiredSaved: 25,
-      releaseRate: 50,
-      timeLimit: 300,
+      totalLemmings: settings.totalLemmings,
+      requiredSaved: settings.requiredSaved,
+      releaseRate: settings.releaseRate,
+      timeLimit: settings.timeLimit,
       skills: {
-        climber: 10,
-        floater: 10,
-        bomber: 10,
-        blocker: 10,
-        builder: 10,
-        basher: 10,
-        miner: 10,
-        digger: 10,
+        climber: settings.skills.CLIMBER,
+        floater: settings.skills.FLOATER,
+        bomber: settings.skills.BOMBER,
+        blocker: settings.skills.BLOCKER,
+        builder: settings.skills.BUILDER,
+        basher: settings.skills.BASHER,
+        miner: settings.skills.MINER,
+        digger: settings.skills.DIGGER,
       },
     };
 
@@ -134,7 +181,7 @@ export default function EditorScreen() {
     } else {
       Alert.alert('Level Data', json.substring(0, 500) + '...');
     }
-  }, [terrain, levelName]);
+  }, [terrain, levelName, settings]);
 
   const brushes: BrushType[] = ['AIR', 'SOLID', 'STEEL', 'WATER', 'LAVA', 'SPAWN', 'EXIT'];
 
@@ -146,9 +193,17 @@ export default function EditorScreen() {
           <Text style={styles.backButtonText}>{'<'} BACK</Text>
         </TouchableOpacity>
         <Text style={styles.title}>LEVEL EDITOR</Text>
-        <TouchableOpacity onPress={handleExport} style={styles.exportButton}>
-          <Text style={styles.exportButtonText}>EXPORT</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            onPress={() => setShowSettingsModal(true)}
+            style={styles.settingsButton}
+          >
+            <Text style={styles.settingsButtonText}>SETTINGS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleExport} style={styles.exportButton}>
+            <Text style={styles.exportButtonText}>EXPORT</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -268,6 +323,151 @@ export default function EditorScreen() {
           Exit: {exitRef.current ? `(${exitRef.current.x}, ${exitRef.current.y})` : 'Not set'}
         </Text>
       </View>
+
+      {/* Settings Modal */}
+      <Modal
+        visible={showSettingsModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSettingsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>LEVEL SETTINGS</Text>
+
+            <ScrollView style={styles.modalScroll}>
+              {/* Level Parameters */}
+              <Text style={styles.sectionTitle}>Level Parameters</Text>
+
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Total Lemmings:</Text>
+                <View style={styles.numberInput}>
+                  <TouchableOpacity
+                    style={styles.numberButton}
+                    onPress={() => updateSetting('totalLemmings', Math.max(1, settings.totalLemmings - 5))}
+                  >
+                    <Text style={styles.numberButtonText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.numberValue}>{settings.totalLemmings}</Text>
+                  <TouchableOpacity
+                    style={styles.numberButton}
+                    onPress={() => updateSetting('totalLemmings', Math.min(100, settings.totalLemmings + 5))}
+                  >
+                    <Text style={styles.numberButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Required Saved:</Text>
+                <View style={styles.numberInput}>
+                  <TouchableOpacity
+                    style={styles.numberButton}
+                    onPress={() => updateSetting('requiredSaved', Math.max(1, settings.requiredSaved - 5))}
+                  >
+                    <Text style={styles.numberButtonText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.numberValue}>{settings.requiredSaved}</Text>
+                  <TouchableOpacity
+                    style={styles.numberButton}
+                    onPress={() => updateSetting('requiredSaved', Math.min(settings.totalLemmings, settings.requiredSaved + 5))}
+                  >
+                    <Text style={styles.numberButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Release Rate:</Text>
+                <View style={styles.numberInput}>
+                  <TouchableOpacity
+                    style={styles.numberButton}
+                    onPress={() => updateSetting('releaseRate', Math.max(1, settings.releaseRate - 5))}
+                  >
+                    <Text style={styles.numberButtonText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.numberValue}>{settings.releaseRate}</Text>
+                  <TouchableOpacity
+                    style={styles.numberButton}
+                    onPress={() => updateSetting('releaseRate', Math.min(99, settings.releaseRate + 5))}
+                  >
+                    <Text style={styles.numberButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Time Limit (sec):</Text>
+                <View style={styles.numberInput}>
+                  <TouchableOpacity
+                    style={styles.numberButton}
+                    onPress={() => updateSetting('timeLimit', Math.max(60, settings.timeLimit - 30))}
+                  >
+                    <Text style={styles.numberButtonText}>-</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.numberValue}>{settings.timeLimit}</Text>
+                  <TouchableOpacity
+                    style={styles.numberButton}
+                    onPress={() => updateSetting('timeLimit', Math.min(600, settings.timeLimit + 30))}
+                  >
+                    <Text style={styles.numberButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Theme Selection */}
+              <Text style={styles.sectionTitle}>Theme</Text>
+              <View style={styles.themeGrid}>
+                {THEME_IDS.map((themeId) => (
+                  <TouchableOpacity
+                    key={themeId}
+                    style={[
+                      styles.themeButton,
+                      { backgroundColor: getThemeConfig(themeId).solidColor },
+                      settings.themeId === themeId && styles.themeButtonSelected,
+                    ]}
+                    onPress={() => updateSetting('themeId', themeId)}
+                  >
+                    <Text style={styles.themeButtonText}>{themeId.toUpperCase()}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Skills */}
+              <Text style={styles.sectionTitle}>Available Skills</Text>
+              <View style={styles.skillsGrid}>
+                {SKILL_NAMES.map((skill) => (
+                  <View key={skill} style={styles.skillRow}>
+                    <Text style={styles.skillLabel}>{skill}</Text>
+                    <View style={styles.numberInput}>
+                      <TouchableOpacity
+                        style={styles.numberButtonSmall}
+                        onPress={() => updateSkill(skill, settings.skills[skill] - 1)}
+                      >
+                        <Text style={styles.numberButtonText}>-</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.skillValue}>{settings.skills[skill]}</Text>
+                      <TouchableOpacity
+                        style={styles.numberButtonSmall}
+                        onPress={() => updateSkill(skill, settings.skills[skill] + 1)}
+                      >
+                        <Text style={styles.numberButtonText}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.closeModalButton}
+              onPress={() => setShowSettingsModal(false)}
+            >
+              <Text style={styles.closeModalButtonText}>CLOSE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -408,5 +608,154 @@ const styles = StyleSheet.create({
   infoText: {
     color: '#888',
     fontSize: 12,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  settingsButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  settingsButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 16,
+    padding: 20,
+    width: '90%',
+    maxWidth: 500,
+    maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: '#3a3a5e',
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2196F3',
+    textAlign: 'center',
+    marginBottom: 20,
+    letterSpacing: 2,
+  },
+  modalScroll: {
+    maxHeight: 400,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginTop: 16,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3a3a5e',
+    paddingBottom: 8,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  settingLabel: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  numberInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  numberButton: {
+    width: 36,
+    height: 36,
+    backgroundColor: '#2a2a4e',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  numberButtonSmall: {
+    width: 28,
+    height: 28,
+    backgroundColor: '#2a2a4e',
+    borderRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  numberButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  numberValue: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    minWidth: 40,
+    textAlign: 'center',
+  },
+  themeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  themeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  themeButtonSelected: {
+    borderColor: '#fff',
+  },
+  themeButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  skillsGrid: {
+    gap: 8,
+  },
+  skillRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#2a2a4e',
+    padding: 8,
+    borderRadius: 6,
+  },
+  skillLabel: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  skillValue: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    minWidth: 30,
+    textAlign: 'center',
+  },
+  closeModalButton: {
+    backgroundColor: '#4CAF50',
+    padding: 14,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  closeModalButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    fontSize: 16,
   },
 });

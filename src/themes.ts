@@ -100,6 +100,9 @@ export function getAllThemeIds(): ThemeId[] {
   return Object.keys(THEMES) as ThemeId[];
 }
 
+// Export theme IDs as array for convenience
+export const THEME_IDS: ThemeId[] = Object.keys(THEMES) as ThemeId[];
+
 // Get theme name
 export function getThemeName(themeId: ThemeId): string {
   return THEMES[themeId]?.name || 'Unknown';
