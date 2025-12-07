@@ -28,6 +28,7 @@ export default function MenuScreen() {
     { label: 'PLAY', route: '/(game)/level-select/FUN' as const, color: '#4CAF50' },
     { label: 'EDITOR', route: '/(game)/editor' as const, color: '#2196F3' },
     { label: 'BROWSE LEVELS', route: '/(game)/browse' as const, color: '#FF9800' },
+    { label: 'SETTINGS', route: '/(game)/settings' as const, color: '#607D8B' },
     { label: 'ASSET MANAGER', route: '/(game)/asset-manager' as const, color: '#9C27B0' },
     { label: 'SCENE EXPLORER', route: '/(game)/scene-explorer' as const, color: '#E91E63' },
     { label: 'TECH DEMO', route: '/(game)/tech-demo' as const, color: '#00BCD4' },

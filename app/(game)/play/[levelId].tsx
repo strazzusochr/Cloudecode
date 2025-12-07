@@ -10,7 +10,20 @@ import SkillPanel from '../../../components/SkillPanel';
 import HUD from '../../../components/ui/HUD';
 import Minimap from '../../../components/Minimap';
 import LevelCompleteModal from '../../../components/LevelCompleteModal';
+import PauseMenu from '../../../components/ui/PauseMenu';
 import type { SkillType } from '../../../src/types/game';
+
+// Skill keyboard mappings (1-8 for skills)
+const SKILL_KEYS: Record<string, SkillType> = {
+  '1': 'CLIMBER',
+  '2': 'FLOATER',
+  '3': 'BOMBER',
+  '4': 'BLOCKER',
+  '5': 'BUILDER',
+  '6': 'BASHER',
+  '7': 'MINER',
+  '8': 'DIGGER',
+};
 
 export default function PlayScreen() {
   const { levelId } = useLocalSearchParams<{ levelId: string }>();
@@ -147,6 +160,71 @@ export default function PlayScreen() {
     playSound('click');
   }, []);
 
+  const handleResume = useCallback(() => {
+    if (isPaused) {
+      togglePause();
+      playSound('click');
+    }
+  }, [isPaused]);
+
+  // Keyboard shortcuts (web only)
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle keys if level is complete
+      if (isComplete) return;
+
+      const key = e.key.toLowerCase();
+
+      // Pause/Resume
+      if (key === 'escape' || key === 'p') {
+        e.preventDefault();
+        togglePause();
+        playSound('click');
+        return;
+      }
+
+      // Only handle other keys if not paused
+      if (isPaused) return;
+
+      // Skill selection (1-8)
+      if (SKILL_KEYS[e.key]) {
+        e.preventDefault();
+        setSelectedSkill(SKILL_KEYS[e.key]);
+        playSound('click');
+        return;
+      }
+
+      // Release rate adjustment
+      if (key === '+' || key === '=') {
+        e.preventDefault();
+        setReleaseRate(Math.min(99, releaseRate + 5));
+        return;
+      }
+      if (key === '-' || key === '_') {
+        e.preventDefault();
+        setReleaseRate(Math.max(1, releaseRate - 5));
+        return;
+      }
+
+      // Nuke (n key with confirmation)
+      if (key === 'n') {
+        e.preventDefault();
+        // Double press required for safety - just flash warning for now
+        return;
+      }
+
+      // Fast forward (hold space) - would need special handling
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPaused, isComplete, releaseRate]);
+
+  // Get level name for pause menu
+  const levelName = currentLevelRef.current?.name || levelId;
+
   if (!isReady) {
     return <View style={styles.container} />;
   }
@@ -178,6 +256,15 @@ export default function PlayScreen() {
         onNuke={handleNuke}
         onPause={handlePause}
         isPaused={isPaused}
+      />
+
+      {/* Pause Menu */}
+      <PauseMenu
+        visible={isPaused && !isComplete}
+        levelName={levelName}
+        onResume={handleResume}
+        onRestart={handleRetry}
+        onExit={handleExit}
       />
 
       {/* Level Complete Modal */}
