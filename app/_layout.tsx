@@ -1,11 +1,25 @@
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { View, StyleSheet } from 'react-native';
 
 export default function RootLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    />
+    <View style={styles.container}>
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'fade',
+          contentStyle: { backgroundColor: '#1a1a2e' },
+        }}
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1a1a2e',
+  },
+});
