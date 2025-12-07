@@ -6,6 +6,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from '../src/stores/gameStore';
+import { useSoundStore } from '../src/stores/soundStore';
 import { world, queries } from '../ecs/index';
 import { getTerrainData, getTerrainDimensions, TerrainType } from '../src/terrain/terrainUtils';
 import { getThemeConfig } from '../src/themes';
@@ -110,6 +111,17 @@ function SceneContent({ level, cameraMode, followIndex, gameSpeed }: SceneConten
   const theme = useMemo(() => getThemeConfig(level.themeId), [level.themeId]);
   const controlsRef = useRef<any>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
+  const assignSkillToLemming = useGameStore((state) => state.assignSkillToLemming);
+  const { playSound } = useSoundStore();
+
+  const handleLemmingClick = useCallback((lemmingId: string) => {
+    const success = assignSkillToLemming(lemmingId);
+    if (success) {
+      playSound('skill_assigned');
+    } else {
+      playSound('error');
+    }
+  }, [assignSkillToLemming, playSound]);
 
   return (
     <>
@@ -165,7 +177,10 @@ function SceneContent({ level, cameraMode, followIndex, gameSpeed }: SceneConten
       <TerrainMesh level={level} theme={theme} />
 
       {/* Lemmings */}
-      <LemmingsRenderer />
+      <LemmingsRenderer onLemmingClick={handleLemmingClick} />
+
+      {/* Click Handler */}
+      <ClickHandler onLemmingClick={handleLemmingClick} />
 
       {/* Spawn/Exit Markers */}
       <SpawnMarker position={level.spawnPosition} />
@@ -247,7 +262,11 @@ function TerrainMesh({ level, theme }: { level: any; theme: any }) {
 }
 
 // Lemmings Renderer
-function LemmingsRenderer() {
+interface LemmingsRendererProps {
+  onLemmingClick?: (lemmingId: string) => void;
+}
+
+function LemmingsRenderer({ onLemmingClick }: LemmingsRendererProps) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const [lemmingCount, setLemmingCount] = useState(0);
 
@@ -367,6 +386,111 @@ function ExitMarker({ position }: { position: { x: number; y: number } }) {
       <mesh ref={meshRef} position={[0, 0.7, 0]}>
         <coneGeometry args={[0.2, 0.3, 8]} />
         <meshBasicMaterial color="#ffff00" />
+      </mesh>
+    </group>
+  );
+}
+
+// Click Handler for lemming selection
+interface ClickHandlerProps {
+  onLemmingClick: (lemmingId: string) => void;
+}
+
+function ClickHandler({ onLemmingClick }: ClickHandlerProps) {
+  const { camera, gl, size } = useThree();
+  const raycaster = useMemo(() => new THREE.Raycaster(), []);
+  const pointer = useMemo(() => new THREE.Vector2(), []);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const selectedSkill = useGameStore((state) => state.selectedSkill);
+
+  // Find lemming at pointer position
+  const findLemmingAtPointer = useCallback((event: MouseEvent | { clientX: number; clientY: number }) => {
+    const rect = gl.domElement.getBoundingClientRect();
+    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(pointer, camera);
+
+    const entities = queries.getActiveLemmings();
+    let closestDistance = Infinity;
+    let closestId: string | null = null;
+
+    entities.forEach((entity) => {
+      const lemmingPos = new THREE.Vector3(
+        entity.position.x,
+        entity.position.y + 0.3,
+        entity.position.z
+      );
+
+      const distance = raycaster.ray.distanceToPoint(lemmingPos);
+      const rayDistance = raycaster.ray.origin.distanceTo(lemmingPos);
+
+      if (distance < 0.5 && rayDistance < closestDistance) {
+        closestDistance = rayDistance;
+        closestId = entity.id;
+      }
+    });
+
+    return closestId;
+  }, [camera, gl, pointer, raycaster]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    const handleClick = (event: MouseEvent) => {
+      const closestId = findLemmingAtPointer(event);
+      if (closestId) {
+        onLemmingClick(closestId);
+      }
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const closestId = findLemmingAtPointer(event);
+      setHoveredId(closestId);
+
+      // Update cursor
+      if (closestId && selectedSkill) {
+        gl.domElement.style.cursor = 'pointer';
+      } else if (closestId) {
+        gl.domElement.style.cursor = 'help';
+      } else {
+        gl.domElement.style.cursor = 'default';
+      }
+    };
+
+    gl.domElement.addEventListener('click', handleClick);
+    gl.domElement.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      gl.domElement.removeEventListener('click', handleClick);
+      gl.domElement.removeEventListener('mousemove', handleMouseMove);
+      gl.domElement.style.cursor = 'default';
+    };
+  }, [findLemmingAtPointer, gl, onLemmingClick, selectedSkill]);
+
+  // Render selection indicator
+  if (!hoveredId) return null;
+
+  const entity = queries.getActiveLemmings().find((e) => e.id === hoveredId);
+  if (!entity) return null;
+
+  return (
+    <group position={[entity.position.x, entity.position.y + 0.8, entity.position.z]}>
+      {/* Selection ring */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.2, 0.25, 16]} />
+        <meshBasicMaterial
+          color={selectedSkill ? '#4CAF50' : '#ffff00'}
+          transparent
+          opacity={0.8}
+        />
+      </mesh>
+      {/* Arrow pointing down */}
+      <mesh position={[0, 0.2, 0]} rotation={[Math.PI, 0, 0]}>
+        <coneGeometry args={[0.1, 0.2, 8]} />
+        <meshBasicMaterial
+          color={selectedSkill ? '#4CAF50' : '#ffff00'}
+        />
       </mesh>
     </group>
   );
