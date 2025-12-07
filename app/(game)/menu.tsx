@@ -1,13 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Animated } from 'react-native';
 import { router } from 'expo-router';
 import { useSoundStore } from '../../src/stores/soundStore';
 import AudioSettings from '../../components/ui/AudioSettings';
+import Tutorial from '../../components/ui/Tutorial';
 
 const { width } = Dimensions.get('window');
 
 export default function MenuScreen() {
   const { playMusic, playSound, preloadAllSounds, isLoaded } = useSoundStore();
+  const [showTutorial, setShowTutorial] = useState(true);
 
   // Initialize audio on mount
   useEffect(() => {
@@ -20,10 +22,19 @@ export default function MenuScreen() {
     }
   }, []);
 
+  const handleTutorialComplete = () => {
+    setShowTutorial(false);
+  };
+
   const handleMenuPress = (route: string) => {
     playSound('click');
     router.push(route as any);
   };
+  const handleShowTutorial = () => {
+    playSound('click');
+    setShowTutorial(true);
+  };
+
   const menuItems = [
     { label: 'PLAY', route: '/(game)/level-select/FUN' as const, color: '#4CAF50' },
     { label: 'EDITOR', route: '/(game)/editor' as const, color: '#2196F3' },
@@ -64,11 +75,24 @@ export default function MenuScreen() {
         <AudioSettings compact />
       </View>
 
+      {/* How to Play Button */}
+      <TouchableOpacity
+        style={styles.tutorialButton}
+        onPress={handleShowTutorial}
+      >
+        <Text style={styles.tutorialButtonText}>? HOW TO PLAY</Text>
+      </TouchableOpacity>
+
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>High-End 3D Web Game</Text>
         <Text style={styles.footerText}>100,000+ Polygons</Text>
       </View>
+
+      {/* Tutorial Modal */}
+      {showTutorial && (
+        <Tutorial onComplete={handleTutorialComplete} />
+      )}
     </View>
   );
 }
@@ -136,5 +160,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     right: 20,
+  },
+  tutorialButton: {
+    position: 'absolute',
+    bottom: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+  },
+  tutorialButtonText: {
+    color: '#4CAF50',
+    fontSize: 14,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
 });

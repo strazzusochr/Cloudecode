@@ -1,7 +1,7 @@
 // Main 3D Game Canvas
 
-import React, { useRef, useMemo, useEffect, useState } from 'react';
-import { StyleSheet, View, Platform } from 'react-native';
+import React, { useRef, useMemo, useEffect, useState, useCallback } from 'react';
+import { StyleSheet, View, Platform, TouchableOpacity, Text } from 'react-native';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
@@ -11,12 +11,42 @@ import { getTerrainData, getTerrainDimensions, TerrainType } from '../src/terrai
 import { getThemeConfig } from '../src/themes';
 import ParticleManager, { ParticleManagerRef } from './particles/ParticleManager';
 
+// Camera modes
+type CameraMode = 'free' | 'follow';
+
 interface GameCanvasProps {
   levelId: string;
 }
 
 export default function GameCanvas({ levelId }: GameCanvasProps) {
   const currentLevel = useGameStore((state) => state.currentLevel);
+  const [cameraMode, setCameraMode] = useState<CameraMode>('free');
+  const [followIndex, setFollowIndex] = useState(0);
+  const [gameSpeed, setGameSpeed] = useState(1);
+
+  const toggleCameraMode = useCallback(() => {
+    setCameraMode((prev) => (prev === 'free' ? 'follow' : 'free'));
+  }, []);
+
+  const cycleFollowTarget = useCallback(() => {
+    const entities = queries.getActiveLemmings();
+    if (entities.length > 0) {
+      setFollowIndex((prev) => (prev + 1) % entities.length);
+    }
+  }, []);
+
+  const adjustSpeed = useCallback((delta: number) => {
+    setGameSpeed((prev) => Math.max(0.25, Math.min(3, prev + delta)));
+  }, []);
+
+  // Expose game speed to game store
+  useEffect(() => {
+    // Update game speed multiplier in store if available
+    const { setGameSpeed: storeSetSpeed } = useGameStore.getState() as any;
+    if (storeSetSpeed) {
+      storeSetSpeed(gameSpeed);
+    }
+  }, [gameSpeed]);
 
   if (!currentLevel) {
     return <View style={styles.container} />;
@@ -29,31 +59,81 @@ export default function GameCanvas({ levelId }: GameCanvasProps) {
         dpr={Platform.OS === 'web' ? [1, 2] : 1}
         style={styles.canvas}
       >
-        <SceneContent level={currentLevel} />
+        <SceneContent
+          level={currentLevel}
+          cameraMode={cameraMode}
+          followIndex={followIndex}
+          gameSpeed={gameSpeed}
+        />
       </Canvas>
+
+      {/* Camera Controls Overlay */}
+      <View style={styles.cameraControls}>
+        <TouchableOpacity
+          style={[styles.cameraButton, cameraMode === 'follow' && styles.activeButton]}
+          onPress={toggleCameraMode}
+        >
+          <Text style={styles.buttonText}>
+            {cameraMode === 'free' ? 'FREE' : 'FOLLOW'}
+          </Text>
+        </TouchableOpacity>
+
+        {cameraMode === 'follow' && (
+          <TouchableOpacity style={styles.cameraButton} onPress={cycleFollowTarget}>
+            <Text style={styles.buttonText}>NEXT</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Speed Controls Overlay */}
+      <View style={styles.speedControls}>
+        <TouchableOpacity style={styles.speedButton} onPress={() => adjustSpeed(-0.25)}>
+          <Text style={styles.buttonText}>-</Text>
+        </TouchableOpacity>
+        <Text style={styles.speedText}>{gameSpeed.toFixed(2)}x</Text>
+        <TouchableOpacity style={styles.speedButton} onPress={() => adjustSpeed(0.25)}>
+          <Text style={styles.buttonText}>+</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 interface SceneContentProps {
   level: any;
+  cameraMode: CameraMode;
+  followIndex: number;
+  gameSpeed: number;
 }
 
-function SceneContent({ level }: SceneContentProps) {
+function SceneContent({ level, cameraMode, followIndex, gameSpeed }: SceneContentProps) {
   const theme = useMemo(() => getThemeConfig(level.themeId), [level.themeId]);
+  const controlsRef = useRef<any>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera>(null);
 
   return (
     <>
       {/* Camera */}
       <PerspectiveCamera
+        ref={cameraRef}
         makeDefault
         position={[level.width * 0.05, -level.height * 0.05, 15]}
         fov={60}
       />
 
+      {/* Camera Controller */}
+      <CameraController
+        cameraRef={cameraRef}
+        controlsRef={controlsRef}
+        cameraMode={cameraMode}
+        followIndex={followIndex}
+        level={level}
+      />
+
       {/* Controls */}
       <OrbitControls
-        enablePan
+        ref={controlsRef}
+        enablePan={cameraMode === 'free'}
         enableZoom
         enableRotate={false}
         minDistance={5}
@@ -292,6 +372,57 @@ function ExitMarker({ position }: { position: { x: number; y: number } }) {
   );
 }
 
+// Camera Controller for follow mode
+interface CameraControllerProps {
+  cameraRef: React.RefObject<THREE.PerspectiveCamera>;
+  controlsRef: React.RefObject<any>;
+  cameraMode: CameraMode;
+  followIndex: number;
+  level: any;
+}
+
+function CameraController({
+  cameraRef,
+  controlsRef,
+  cameraMode,
+  followIndex,
+  level,
+}: CameraControllerProps) {
+  const targetPosition = useRef(new THREE.Vector3());
+  const scale = 0.1;
+
+  useFrame(() => {
+    if (cameraMode !== 'follow' || !cameraRef.current || !controlsRef.current) return;
+
+    const entities = queries.getActiveLemmings();
+    if (entities.length === 0) return;
+
+    const safeIndex = Math.min(followIndex, entities.length - 1);
+    const entity = entities[safeIndex];
+    if (!entity) return;
+
+    // Calculate target position
+    const targetX = entity.position.x;
+    const targetY = entity.position.y + 0.5;
+
+    // Smooth camera follow
+    targetPosition.current.lerp(
+      new THREE.Vector3(targetX, targetY, 10),
+      0.05
+    );
+
+    // Update camera position
+    cameraRef.current.position.x = targetPosition.current.x;
+    cameraRef.current.position.y = targetPosition.current.y;
+
+    // Update orbit controls target
+    controlsRef.current.target.set(targetX, targetY, 0);
+    controlsRef.current.update();
+  });
+
+  return null;
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -299,5 +430,57 @@ const styles = StyleSheet.create({
   },
   canvas: {
     flex: 1,
+  },
+  cameraControls: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  cameraButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  activeButton: {
+    backgroundColor: 'rgba(76, 175, 80, 0.6)',
+    borderColor: '#4CAF50',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  speedControls: {
+    position: 'absolute',
+    top: 10,
+    left: '50%',
+    transform: [{ translateX: -50 }],
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 8,
+  },
+  speedButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#444',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  speedText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+    minWidth: 40,
+    textAlign: 'center',
   },
 });
