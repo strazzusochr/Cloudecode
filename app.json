@@ -1,24 +1,24 @@
 {
   "expo": {
-    "name": "River Crossing Puzzle 3D",
-    "slug": "river-crossing-puzzle-3d",
-    "version": "1.0.0",
-    "orientation": "default",
-    "userInterfaceStyle": "light",
-    "scheme": "river-crossing",
+    "name": "Lemmings 3D Clone",
+    "slug": "lemmings-3d-clone",
+    "version": "2.0.0",
+    "orientation": "landscape",
+    "userInterfaceStyle": "dark",
+    "scheme": "lemmings3d",
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#4A90E2"
+      "backgroundColor": "#1a1a2e"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cloudecode.rivercrossing"
+      "bundleIdentifier": "com.cloudecode.lemmings3d"
     },
     "android": {
-      "package": "com.cloudecode.rivercrossing",
+      "package": "com.cloudecode.lemmings3d",
       "permissions": []
     },
     "web": {
