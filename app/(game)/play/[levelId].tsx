@@ -11,6 +11,7 @@ import HUD from '../../../components/ui/HUD';
 import Minimap from '../../../components/Minimap';
 import LevelCompleteModal from '../../../components/LevelCompleteModal';
 import PauseMenu from '../../../components/ui/PauseMenu';
+import LoadingScreen from '../../../components/ui/LoadingScreen';
 import type { SkillType } from '../../../src/types/game';
 
 // Skill keyboard mappings (1-8 for skills)
@@ -226,7 +227,12 @@ export default function PlayScreen() {
   const levelName = currentLevelRef.current?.name || levelId;
 
   if (!isReady) {
-    return <View style={styles.container} />;
+    return (
+      <LoadingScreen
+        message="Preparing level..."
+        levelName={levelName}
+      />
+    );
   }
 
   return (
