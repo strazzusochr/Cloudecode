@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useSoundStore, getMusicTrackForCategory } from '../../../src/stores/soundStore';
-import { useGameStore } from '../../../src/stores/gameStore';
+import { useProgressStore } from '../../../src/stores/progressStore';
 
 const { width } = Dimensions.get('window');
 const BUTTON_SIZE = Math.min(80, (width - 80) / 6);
@@ -18,26 +18,28 @@ const CATEGORY_COLORS: Record<Category, string> = {
 
 const LEVELS_PER_CATEGORY = 30;
 
-// Mock progress data - in a real app this would come from persistent storage
-const getCompletedLevels = (): Record<string, { stars: number; bestTime: number }> => {
-  // Return empty for now - would be loaded from AsyncStorage
-  return {};
-};
-
 export default function LevelSelectScreen() {
   const { category } = useLocalSearchParams<{ category: Category }>();
   const validCategory = (category?.toUpperCase() as Category) || 'FUN';
   const color = CATEGORY_COLORS[validCategory] || CATEGORY_COLORS.FUN;
-  const { playSound, playMusic } = useSoundStore();
+  const { playSound } = useSoundStore();
+  const { getLevelProgress, isLevelUnlocked, getCategoryProgress } = useProgressStore();
 
   const categories: Category[] = ['FUN', 'TRICKY', 'TAXING', 'MAYHEM'];
 
-  // Get completed levels
-  const completedLevels = useMemo(() => getCompletedLevels(), []);
+  // Get category stats
+  const categoryStats = useMemo(
+    () => getCategoryProgress(validCategory),
+    [validCategory, getCategoryProgress]
+  );
 
   const handleLevelSelect = (levelNum: number) => {
-    playSound('click');
     const levelId = `${validCategory.toLowerCase()}-${levelNum}`;
+    if (!isLevelUnlocked(levelId, levelNum)) {
+      // Level locked - play error sound or show message
+      return;
+    }
+    playSound('click');
     router.push(`/(game)/play/${levelId}`);
   };
 
@@ -46,10 +48,19 @@ export default function LevelSelectScreen() {
     router.replace(`/(game)/level-select/${newCategory}`);
   };
 
-  const getLevelStatus = (levelNum: number): { completed: boolean; stars: number } => {
+  const getLevelStatus = (levelNum: number): { completed: boolean; stars: number; locked: boolean } => {
     const levelId = `${validCategory.toLowerCase()}-${levelNum}`;
-    const data = completedLevels[levelId];
-    return data ? { completed: true, stars: data.stars } : { completed: false, stars: 0 };
+    const progress = getLevelProgress(levelId);
+    const unlocked = isLevelUnlocked(levelId, levelNum);
+
+    if (!progress) {
+      return { completed: false, stars: 0, locked: !unlocked };
+    }
+    return {
+      completed: progress.completed,
+      stars: progress.stars,
+      locked: !unlocked
+    };
   };
 
   return (
@@ -97,27 +108,35 @@ export default function LevelSelectScreen() {
                 key={levelNum}
                 style={[
                   styles.levelButton,
-                  { borderColor: color },
+                  { borderColor: status.locked ? '#444' : color },
                   status.completed && styles.levelCompleted,
+                  status.locked && styles.levelLocked,
                 ]}
                 onPress={() => handleLevelSelect(levelNum)}
-                activeOpacity={0.7}
+                activeOpacity={status.locked ? 1 : 0.7}
+                disabled={status.locked}
               >
-                <Text style={[styles.levelNumber, { color }]}>{levelNum}</Text>
-                {status.completed && (
-                  <View style={styles.starsContainer}>
-                    {[1, 2, 3].map((star) => (
-                      <Text
-                        key={star}
-                        style={[
-                          styles.star,
-                          star <= status.stars ? styles.starFilled : styles.starEmpty,
-                        ]}
-                      >
-                        ★
-                      </Text>
-                    ))}
-                  </View>
+                {status.locked ? (
+                  <Text style={styles.lockIcon}>🔒</Text>
+                ) : (
+                  <>
+                    <Text style={[styles.levelNumber, { color }]}>{levelNum}</Text>
+                    {status.completed && (
+                      <View style={styles.starsContainer}>
+                        {[1, 2, 3].map((star) => (
+                          <Text
+                            key={star}
+                            style={[
+                              styles.star,
+                              star <= status.stars ? styles.starFilled : styles.starEmpty,
+                            ]}
+                          >
+                            ★
+                          </Text>
+                        ))}
+                      </View>
+                    )}
+                  </>
                 )}
               </TouchableOpacity>
             );
@@ -127,6 +146,17 @@ export default function LevelSelectScreen() {
 
       {/* Info Footer */}
       <View style={styles.footer}>
+        <View style={styles.statsRow}>
+          <Text style={styles.statText}>
+            Completed: {categoryStats.completedCount}/{LEVELS_PER_CATEGORY}
+          </Text>
+          <Text style={styles.statText}>
+            ★ {categoryStats.totalStars}/{LEVELS_PER_CATEGORY * 3}
+          </Text>
+          <Text style={styles.statText}>
+            Perfect: {categoryStats.perfectCount}
+          </Text>
+        </View>
         <Text style={styles.footerText}>
           {validCategory === 'FUN' && 'Tutorial levels - Learn the basics'}
           {validCategory === 'TRICKY' && 'Moderate challenge - Think carefully'}
@@ -214,6 +244,13 @@ const styles = StyleSheet.create({
   levelCompleted: {
     backgroundColor: 'rgba(76, 175, 80, 0.2)',
   },
+  levelLocked: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    opacity: 0.6,
+  },
+  lockIcon: {
+    fontSize: 20,
+  },
   starsContainer: {
     flexDirection: 'row',
     position: 'absolute',
@@ -234,6 +271,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: '#3a3a5e',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 20,
+    marginBottom: 8,
+  },
+  statText: {
+    color: '#aaa',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
   footerText: {
     color: '#888',

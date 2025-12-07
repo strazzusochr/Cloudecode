@@ -1,8 +1,9 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useGameStore } from '../../../src/stores/gameStore';
 import { useSoundStore, getMusicTrackForCategory } from '../../../src/stores/soundStore';
+import { useProgressStore } from '../../../src/stores/progressStore';
 import { getLevelById } from '../../../src/levels/levelData';
 import GameCanvas from '../../../components/GameCanvas';
 import SkillPanel from '../../../components/SkillPanel';
@@ -38,12 +39,18 @@ export default function PlayScreen() {
   } = useGameStore();
 
   const { playSound, preloadAllSounds, playMusic, stopMusic } = useSoundStore();
+  const { recordLevelAttempt, recordLevelComplete } = useProgressStore();
+  const progressRecordedRef = useRef(false);
+  const currentLevelRef = useRef<any>(null);
 
   // Initialize level
   useEffect(() => {
     const level = getLevelById(levelId || '');
     if (level) {
+      currentLevelRef.current = level;
+      progressRecordedRef.current = false;
       initLevel(level);
+      recordLevelAttempt(levelId || '');
       preloadAllSounds().then(() => {
         // Play music based on level category
         const category = level.category?.toLowerCase() || 'fun';
@@ -69,6 +76,18 @@ export default function PlayScreen() {
       if (checkWinCondition()) {
         playSound('level_complete');
         playMusic('victory', false);
+        // Record progress only once
+        if (!progressRecordedRef.current && currentLevelRef.current) {
+          progressRecordedRef.current = true;
+          recordLevelComplete(
+            levelId || '',
+            lemmingsSaved,
+            lemmingsRequired,
+            totalLemmings,
+            timeRemaining,
+            currentLevelRef.current.timeLimit || 300
+          );
+        }
       } else if (checkLoseCondition()) {
         playSound('level_fail');
         playMusic('defeat', false);
@@ -76,7 +95,7 @@ export default function PlayScreen() {
     }, 1000 / 60);
 
     return () => clearInterval(interval);
-  }, [isReady, isPaused, isComplete]);
+  }, [isReady, isPaused, isComplete, lemmingsSaved, timeRemaining]);
 
   const handleSkillSelect = useCallback((skill: SkillType) => {
     setSelectedSkill(skill);
@@ -96,6 +115,32 @@ export default function PlayScreen() {
   const handleExit = useCallback(() => {
     router.back();
   }, []);
+
+  const handleNextLevel = useCallback(() => {
+    // Parse current level ID to get next level
+    const parts = (levelId || '').split('-');
+    if (parts.length === 2) {
+      const category = parts[0];
+      const currentNum = parseInt(parts[1], 10);
+      const nextNum = currentNum + 1;
+
+      // Check if next level exists (max 30 per category)
+      if (nextNum <= 30) {
+        const nextLevelId = `${category}-${nextNum}`;
+        router.replace(`/(game)/play/${nextLevelId}`);
+      }
+    }
+  }, [levelId]);
+
+  // Check if there's a next level
+  const hasNextLevel = (() => {
+    const parts = (levelId || '').split('-');
+    if (parts.length === 2) {
+      const currentNum = parseInt(parts[1], 10);
+      return currentNum < 30;
+    }
+    return false;
+  })();
 
   const handlePause = useCallback(() => {
     togglePause();
@@ -144,6 +189,8 @@ export default function PlayScreen() {
           total={totalLemmings}
           onRetry={handleRetry}
           onExit={handleExit}
+          onNextLevel={handleNextLevel}
+          hasNextLevel={hasNextLevel}
         />
       )}
     </View>

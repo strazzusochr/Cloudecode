@@ -20,6 +20,8 @@ interface LevelCompleteModalProps {
   total: number;
   onRetry: () => void;
   onExit: () => void;
+  onNextLevel?: () => void;
+  hasNextLevel?: boolean;
 }
 
 export default function LevelCompleteModal({
@@ -29,6 +31,8 @@ export default function LevelCompleteModal({
   total,
   onRetry,
   onExit,
+  onNextLevel,
+  hasNextLevel = false,
 }: LevelCompleteModalProps) {
   const percentage = calculatePercentage(saved, total);
   const requiredPercentage = calculatePercentage(required, total);
@@ -117,6 +121,15 @@ export default function LevelCompleteModal({
             >
               <Text style={styles.buttonText}>RETRY</Text>
             </TouchableOpacity>
+
+            {success && hasNextLevel && onNextLevel && (
+              <TouchableOpacity
+                style={[styles.button, styles.nextButton]}
+                onPress={onNextLevel}
+              >
+                <Text style={styles.buttonText}>NEXT</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={[styles.button, styles.exitButton]}
@@ -233,6 +246,9 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     backgroundColor: '#4CAF50',
+  },
+  nextButton: {
+    backgroundColor: '#2196F3',
   },
   exitButton: {
     backgroundColor: '#666',
