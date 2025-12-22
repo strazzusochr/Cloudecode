@@ -1,0 +1,83 @@
+# YaCy Configuration - Beast Mode Edition
+# =========================================
+# Copy this file to yacy/DATA/SETTINGS/yacy.conf
+
+# =============================================================================
+# MEMORY SETTINGS (Beast Mode: 12 GB)
+# =============================================================================
+javastart_Xmx=12288
+javastart_Xms=4096
+
+# =============================================================================
+# CRAWLER SETTINGS
+# =============================================================================
+# Maximum active crawler threads (Beast Mode: 200)
+crawler.MaxActiveThreads=200
+
+# Maximum pages to crawl per session
+crawlingMaxPages=100000
+
+# Crawl delay in milliseconds (be polite to servers)
+crawlingDelay=500
+
+# =============================================================================
+# NETWORK SETTINGS
+# =============================================================================
+# HTTP Port for web interface
+port=8090
+
+# Enable P2P networking
+network.unit.dht=true
+network.unit.dhtRedundancy.junior=1
+network.unit.dhtRedundancy.senior=3
+
+# =============================================================================
+# INDEX SETTINGS
+# =============================================================================
+# Enable full-text indexing
+index.storeHTCache=true
+index.storeTXCache=true
+
+# Word cache settings
+wordCacheMaxCount=100000
+wordCacheInitCount=30000
+
+# =============================================================================
+# SEARCH SETTINGS
+# =============================================================================
+# Default search results per page
+search.items=10
+
+# Enable snippet generation
+search.snippetLoad=true
+
+# Search timeout in milliseconds
+search.timeout=5000
+
+# =============================================================================
+# PROXY SETTINGS (Optional)
+# =============================================================================
+# Enable HTTP proxy
+# proxy.port=8080
+
+# =============================================================================
+# SECURITY SETTINGS
+# =============================================================================
+# Admin password (change this!)
+adminPassword=yacy
+
+# Allow remote access (set to false for local-only)
+adminAccountForLocalhost=true
+
+# =============================================================================
+# PERFORMANCE TUNING
+# =============================================================================
+# Thread pool sizes
+serverThreads=64
+clientThreads=32
+
+# Connection timeouts
+httpd.timeout=60000
+
+# Database cache
+database.cacheSize=1000
