@@ -12,9 +12,9 @@
   "dependencies": {
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "react-native": "0.76.5",
+    "react-native": "0.84.0",
     "expo": "~52.0.0",
-    "expo-router": "~4.0.0",
+    "expo-router": "~5.1.5",
     "expo-gl": "~15.0.0",
     "expo-av": "~15.0.0",
     "expo-asset": "~11.0.0",
