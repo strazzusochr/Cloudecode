@@ -27,7 +27,9 @@ export type SoundName =
   | 'nuke'
   | 'pause'
   | 'unpause'
-  | 'countdown_tick';
+  | 'countdown_tick'
+  | 'skill_assigned'
+  | 'error';
 
 // Music track types
 export type MusicTrack =
@@ -114,7 +116,7 @@ const ALL_SOUNDS: SoundName[] = [
   'yippee', 'oh_no', 'click', 'dig', 'build', 'splash', 'splat',
   'explosion', 'steel_clink', 'spawn', 'blocker', 'climber', 'floater',
   'miner', 'basher', 'builder_step', 'level_complete', 'level_fail',
-  'nuke', 'pause', 'unpause', 'countdown_tick',
+  'nuke', 'pause', 'unpause', 'countdown_tick', 'skill_assigned', 'error',
 ];
 
 export const useSoundStore = create<SoundStore>((set, get) => ({

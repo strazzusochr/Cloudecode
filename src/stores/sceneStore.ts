@@ -41,23 +41,19 @@ interface SceneStore {
 }
 
 // Storage abstraction
-const storage = Platform.OS === 'web'
-  ? {
-      getItem: (name: string) => Promise.resolve(localStorage.getItem(name)),
-      setItem: (name: string, value: string) => {
-        localStorage.setItem(name, value);
-        return Promise.resolve();
-      },
-      removeItem: (name: string) => {
-        localStorage.removeItem(name);
-        return Promise.resolve();
-      },
-    }
-  : createJSONStorage(() => ({
-      getItem: async () => null,
-      setItem: async () => {},
-      removeItem: async () => {},
-    }));
+const storage = createJSONStorage(() =>
+  Platform.OS === 'web'
+    ? {
+        getItem: (name: string) => localStorage.getItem(name),
+        setItem: (name: string, value: string) => localStorage.setItem(name, value),
+        removeItem: (name: string) => localStorage.removeItem(name),
+      }
+    : {
+        getItem: async () => null,
+        setItem: async () => {},
+        removeItem: async () => {},
+      }
+);
 
 let nextObjectId = 0;
 

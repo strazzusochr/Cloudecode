@@ -8,7 +8,7 @@ function generateTerrain(
   width: number,
   height: number,
   features: Array<{
-    type: 'ground' | 'platform' | 'steel' | 'water' | 'wall';
+    type: 'ground' | 'platform' | 'steel' | 'water' | 'wall' | 'lava';
     x: number;
     y: number;
     w: number;
@@ -25,6 +25,8 @@ function generateTerrain(
         ? TerrainType.STEEL
         : feature.type === 'water'
         ? TerrainType.WATER
+        : feature.type === 'lava'
+        ? TerrainType.LAVA
         : TerrainType.SOLID;
 
     for (let dy = 0; dy < feature.h; dy++) {

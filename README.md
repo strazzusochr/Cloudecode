@@ -1,141 +1,67 @@
-# River Crossing Puzzle Ultimate - 3D Tutorial Level
+# Lemmings 3D Clone
 
-Ein wunderschönes 3D-Puzzle-Spiel, entwickelt mit React Native, Expo und Three.js.
+A 3D remake of the classic **Lemmings** (inspired by the 2006 PSP edition), built with
+React Native, Expo and react-three-fiber. Guide lemmings across hazard-filled levels by
+assigning skills and saving enough of them to reach the exit.
 
-## 📱 Beschreibung
+## Tech Stack
 
-Das klassische "River Crossing Puzzle" in einer modernen 3D-Umgebung. Bringe den Farmer, Wolf, Schaf und Kohl sicher über den Fluss, ohne dass jemand gefressen wird!
+- **Expo SDK 52** / **React Native 0.76**
+- **expo-router** – file-based navigation
+- **react-three-fiber** + **three.js** – 3D rendering
+- **Zustand** for state, plus a small **ECS** (`ecs/`) that runs the lemming simulation
+- **TypeScript** (strict mode)
 
-## 🎮 Spielregeln
-
-- **Ziel**: Alle 4 Charaktere sicher auf das rechte Ufer bringen
-- **Steuerung**: Nur der Farmer kann das Boot steuern
-- **Kapazität**: Das Boot kann maximal 2 Passagiere tragen (Farmer + 1)
-- **Konflikte**:
-  - Wolf + Schaf alleine = Game Over
-  - Schaf + Kohl alleine = Game Over
-  - Wolf + Kohl alleine = OK
-
-## 🌟 Features
-
-- ✨ Wunderschöne 3D-Grafik mit Three.js
-- 🎯 Tutorial-System für neue Spieler
-- ⭐ 3-Sterne-Bewertungssystem
-- 🎵 Sound und Musik (optional)
-- 📊 Statistiken (Züge, Zeit)
-- ⚙️ Einstellbare Grafik-Qualität
-
-## 🚀 Installation & Start
-
-### Voraussetzungen
-
-- Node.js (v18+)
-- npm oder yarn
-- Expo Go App auf dem Smartphone (iOS/Android)
-
-### Installation
+## Getting Started
 
 ```bash
-# Dependencies installieren
 npm install
 
-# App starten
+# Expo dev server (pick a target in the CLI)
 npm start
 
-# Oder direkt für Android
-npm run android
-
-# Oder für iOS
-npm run ios
+# Run directly in the browser
+npm run web
 ```
 
-### Mit Expo Go testen
+## Production Build (Web)
 
-1. Installiere "Expo Go" aus dem App Store (iOS) oder Play Store (Android)
-2. Führe `npm start` aus
-3. Scanne den QR-Code mit deinem Smartphone
-4. Die App wird automatisch geladen
-
-## 🎨 Technologie-Stack
-
-- **React Native** (0.76.5) - Cross-Platform Framework
-- **Expo** (~52.0.0) - Build & Deployment Platform
-- **Three.js** (0.145.0) - 3D-Engine
-- **Expo-GL** - WebGL für React Native
-- **TypeScript** - Type Safety
-
-## 📁 Projektstruktur
-
-```
-Cloudecode/
-├── app/                    # Expo Router Screens
-│   ├── _layout.tsx        # Root Layout
-│   └── index.tsx          # Hauptspiel-Screen
-├── components/            # React-Komponenten
-│   └── GameScene.tsx     # 3D-Szene
-├── game/                  # Spiellogik
-│   ├── characters/       # Charakter-Komponenten
-│   ├── environment/      # Umgebungs-Komponenten
-│   ├── logic/            # Spiellogik
-│   └── ui/               # UI-Komponenten
-│       ├── GameHUD.tsx
-│       ├── TutorialOverlay.tsx
-│       ├── VictoryScreen.tsx
-│       ├── DefeatScreen.tsx
-│       └── PauseMenu.tsx
-├── assets/                # Bilder, Sounds, etc.
-├── types/                 # TypeScript Types
-└── package.json
-
+```bash
+npx expo export -p web    # outputs a static site to dist/
+# then serve it with any static server, e.g.:
+python3 -m http.server --directory dist 8080
 ```
 
-## 🎯 Optimale Lösung
+`dist/` is git-ignored — rebuild it from source with the command above.
 
-Die optimale Lösung benötigt **7 Züge**:
+## Project Structure
 
-1. Farmer + Schaf → Rechts
-2. Farmer ← Links
-3. Farmer + Wolf → Rechts
-4. Farmer + Schaf ← Links
-5. Farmer + Kohl → Rechts
-6. Farmer ← Links
-7. Farmer + Schaf → Rechts
+```
+app/            Expo Router screens (menu, level-select, play, editor, settings, ...)
+components/     3D canvas, HUD, skill panel, minimap, particle effects
+ecs/            Entity store + lemming state machine (the simulation core)
+src/stores/     Zustand stores (game, progress, sound, assets, scene)
+src/levels/     Level definitions (FUN / TRICKY / TAXING / MAYHEM)
+src/terrain/    Destructible-terrain grid + helpers
+src/types/      Shared TypeScript types
+```
 
-**GEWONNEN!** 🎉
+## Gameplay
 
-## 📊 Bewertungssystem
+- 4 difficulty categories with 30 levels each
+- 8 assignable skills: Climber, Floater, Bomber, Blocker, Builder, Basher, Miner, Digger
+- Destructible terrain with water and lava hazards
+- Release-rate control, nuke, pause, and a live minimap
+- Progress (stars / completion) persisted via AsyncStorage (web: localStorage)
 
-- ⭐ **1 Stern**: Level geschafft (beliebig viele Züge)
-- ⭐⭐ **2 Sterne**: ≤9 Züge UND ≤3 Minuten
-- ⭐⭐⭐ **3 Sterne**: 7 Züge (optimal) UND ≤2 Minuten
+## Status
 
-## ⚙️ Einstellungen
-
-- **Musik**: Ein/Aus
-- **Soundeffekte**: Ein/Aus
-- **Tutorial**: Ein/Aus (beim Neustart)
-- **Grafik-Qualität**: Auto, Niedrig, Mittel, Hoch
-
-## 🐛 Bekannte Probleme
-
-- Erste Ladezeit kann auf älteren Geräten länger sein
-- 3D-Performance variiert je nach Gerät
-
-## 🔮 Geplante Features
-
-- Level 2-10 mit steigender Schwierigkeit
-- Verschiedene Themen (Winterlandschaft, Wüste, etc.)
-- Globale Bestenlisten
-- Achievements/Erfolge
-
-## 📝 Lizenz
-
-Dieses Projekt wurde für Bildungszwecke erstellt.
-
-## 👨‍💻 Entwickler
-
-Entwickelt mit ❤️ und Claude AI
+- TypeScript compiles with **zero errors** (`npx tsc --noEmit`).
+- The **web export builds and serves** (`npx expo export -p web`, verified returning HTTP 200).
+- The game flow is implemented in code: menu → level select → play (3D scene, skill
+  assignment, win/lose) → progress saved.
+- Audio currently uses silent placeholders; drop real files into `assets/audio/` to enable sound.
 
 ---
 
-**Viel Spaß beim Spielen!** 🎮
+Built with React Native, Expo and Claude.

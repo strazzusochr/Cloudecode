@@ -26,22 +26,15 @@ interface AssetStore {
 }
 
 // Use localStorage on web, AsyncStorage on native
-const storage = Platform.OS === 'web'
-  ? {
-      getItem: (name: string) => {
-        const value = localStorage.getItem(name);
-        return Promise.resolve(value);
-      },
-      setItem: (name: string, value: string) => {
-        localStorage.setItem(name, value);
-        return Promise.resolve();
-      },
-      removeItem: (name: string) => {
-        localStorage.removeItem(name);
-        return Promise.resolve();
-      },
-    }
-  : createJSONStorage(() => AsyncStorage);
+const storage = createJSONStorage(() =>
+  Platform.OS === 'web'
+    ? {
+        getItem: (name: string) => localStorage.getItem(name),
+        setItem: (name: string, value: string) => localStorage.setItem(name, value),
+        removeItem: (name: string) => localStorage.removeItem(name),
+      }
+    : AsyncStorage
+);
 
 export const useAssetStore = create<AssetStore>()(
   persist(
